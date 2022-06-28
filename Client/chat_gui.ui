@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Starfish</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QStackedWidget" name="stackedWidget">
@@ -27,7 +27,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="page">
      <widget class="QWidget" name="layoutWidget">
@@ -146,7 +146,7 @@
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: rgb(179, 179, 179);</string>
+       <string notr="true">/*background-color: rgb(179, 179, 179);*/</string>
       </property>
      </widget>
      <widget class="QTextEdit" name="textEdit">
@@ -159,7 +159,7 @@
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: rgb(179, 179, 179);</string>
+       <string notr="true">/*background-color: rgb(179, 179, 179);*/</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pushButton_6">
@@ -257,7 +257,7 @@
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: rgb(179, 179, 179);</string>
+       <string notr="true">/*background-color: rgb(179, 179, 179);*/</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pushButton_2">
@@ -299,7 +299,7 @@
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: rgb(179, 179, 179);</string>
+       <string notr="true">/*background-color: rgb(179, 179, 179);*/</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_5">

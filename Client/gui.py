@@ -5,6 +5,7 @@ import netifaces as ni
 
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QEvent, Qt
+from PyQt5.QtGui import QColor
 
 from workers import *
 from custom_elements import *
@@ -19,9 +20,15 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.__extract_components()
         self.__configure_signals()
 
-        self.color_map=[("red", Qt.red), ("lime", Qt.green),
-                        ("darkgreen",Qt.darkGreen), ("darkred",Qt.darkRed),
-                        ("darkmagenta",Qt.darkMagenta), ("magenta",Qt.magenta)]
+        '''
+        ("darkgreen",Qt.darkGreen), ("darkred",Qt.darkRed),
+                        ("darkmagenta",Qt.darkMagenta), ("magenta",Qt.magenta)
+                        ("red", Qt.red),
+        '''
+
+        self.color_map=[("gold", QColor(255, 215, 0)), ("orangered", QColor(255, 69, 0)),
+                        ("firebrick", QColor(178, 34, 34)), ("lawngreen", QColor(124, 252, 0))
+                        ]
         # asocierea dintre user din chat si o culoare din paleta de culori
         self.user_color={}
         self.can_get_msg = True
@@ -157,28 +164,35 @@ class UI(QtWidgets.QMainWindow, QObject):
         create_dialog=CreateUserDialog(self)
         if create_dialog.exec():
             username, password, confirm_password=create_dialog.getResult()
-            if password==confirm_password:
-                print(f"Create Account\nUsername: {username}\nPassword: {password}")
-                '''
-                    Create the credentials and send them to the server
-                    Check for errors
-                '''
-                self.create_user_btn.setEnabled(False)
-                self.login_btn.setEnabled(False)
-                self.signup_thread = QThread()
-                self.signup_worker = SignUpWorker(username, password)
-
-                self.signup_worker.moveToThread(self.signup_thread)
-                self.signup_thread.started.connect(self.signup_worker.run)
-                self.signup_worker.finished.connect(self.signup_thread.quit)
-                self.signup_worker.finished.connect(self.__signup_callback)
-                self.signup_worker.finished.connect(self.signup_worker.deleteLater)
-                self.signup_thread.finished.connect(self.signup_thread.deleteLater)
-                self.signup_thread.start()
-                self.signup_thread.finished.connect(lambda: self.create_user_btn.setEnabled(True))
-                self.signup_thread.finished.connect(lambda: self.login_btn.setEnabled(True))
-            else:
+            if password!=confirm_password:
                 QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Passwords don't match")
+                return
+
+            if len(password)<4:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Password must exceed 4 characters")
+                return
+
+            print(f"Create Account\nUsername: {username}\nPassword: {password}")
+            '''
+                Create the credentials and send them to the server
+                Check for errors
+            '''
+            self.create_user_btn.setEnabled(False)
+            self.login_btn.setEnabled(False)
+            self.signup_thread = QThread()
+            self.signup_worker = SignUpWorker(username, password)
+
+            self.signup_worker.moveToThread(self.signup_thread)
+            self.signup_thread.started.connect(self.signup_worker.run)
+            self.signup_worker.finished.connect(self.signup_thread.quit)
+            self.signup_worker.finished.connect(self.__signup_callback)
+            self.signup_worker.finished.connect(self.signup_worker.deleteLater)
+            self.signup_thread.finished.connect(self.signup_thread.deleteLater)
+            self.signup_thread.start()
+            self.signup_thread.finished.connect(lambda: self.create_user_btn.setEnabled(True))
+            self.signup_thread.finished.connect(lambda: self.login_btn.setEnabled(True))
+
+
 
     def __signup_callback(self, res: requests.Response.__class__):
         '''
@@ -333,9 +347,10 @@ class UI(QtWidgets.QMainWindow, QObject):
         print(f"user {item.text()} selected")
 
     def __stream_pressed(self):
-        print("Stream Started")
+
         #self.stream_on = not self.stream_on
 
+        # check to see if the stream is off
         if not self.stream_on:
             x = ni.gateways()
             y = x['default'][2][1]
@@ -346,8 +361,10 @@ class UI(QtWidgets.QMainWindow, QObject):
                                      "Start streaming",
                                      "Insert the RTMP stream server IPv4 address\nBy default is the local address")
             server_address = ""
+            # if the user wants to stream
             if ok:
-                self.stream_on = not self.stream_on
+                print("Stream Started")
+                self.stream_on = True#not self.stream_on
                 if len(input_server_address) == 0 \
                         or re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", input_server_address) is None:
                     server_address = default_server_address
@@ -367,6 +384,7 @@ class UI(QtWidgets.QMainWindow, QObject):
                 self.stream_worker = StreamSenderWorker(server_address)
                 self.stream_worker.moveToThread(self.stream_thread)
 
+                self.stream_worker.error_signal.connect(self.__on_stream_error)
                 self.stream_thread.started.connect(self.stream_worker.run)
                 self.stream_worker.finished.connect(self.stream_thread.quit)
                 self.stream_worker.finished.connect(self.stream_worker.deleteLater)
@@ -374,10 +392,17 @@ class UI(QtWidgets.QMainWindow, QObject):
 
                 self.stream_thread.start()
         else:
+            print("Stream Stopped")
             self.stream_btn.setText("Start Stream")
             self.stream_worker.stop()
+            self.stream_on=False
             # self.watch_stream_btn.setEnabled(True)
 
+    def __on_stream_error(self, err_msg):
+        self.stream_worker.stop()
+        self.stream_on=False
+        self.stream_btn.setText("Start Stream")
+        QtWidgets.QMessageBox.critical(self, "ERROR", err_msg)
 
     def __watch_stream_pressed(self):
         print("Watch stream")
@@ -429,7 +454,7 @@ class UI(QtWidgets.QMainWindow, QObject):
                          f" {decryptAES(messages[i]['encryptedMsg'], self.chat_key)}\n"
 
             if messages[i]['author']==self.credentials['username']:
-                msg_elem += f"<div style=\"color:blue\">{chat_text}</div>"
+                msg_elem += f"<div style=\"color:darkorange\">{chat_text}</div>"
             else:
                 msg_elem+= f"<div style=\"color:{self.user_color[messages[i]['author']][0]}\">{chat_text}</div>"
         self.chat_browser.setText(msg_elem)
@@ -446,9 +471,9 @@ class UI(QtWidgets.QMainWindow, QObject):
                 item=QtWidgets.QListWidgetItem(username)
                 # verific daca eu sunt userul, daca da colorez cu albastru
                 if username==self.credentials['username']:
-                    item.setForeground(Qt.blue)
+                    item.setForeground(QColor(255, 140, 0))
                 else:
-                    color=random.choice(self.color_map)
+                    color=self.color_map[user_list.index(username)%len(self.color_map)] #random.choice(self.color_map)
                     self.user_color[username]= color
                     item.setForeground(color[1])
                 self.chat_users_list.addItem(item)
@@ -461,6 +486,7 @@ class UI(QtWidgets.QMainWindow, QObject):
     def _close_stream(self):
         if hasattr(self, 'stream_worker') and self.stream_on:
             self.stream_worker.stop()
+            self.stream_btn.setText("Start Stream")
             self.stream_on = False
 
         if hasattr(self, 'watch_stream_worker'):
@@ -490,6 +516,7 @@ class UI(QtWidgets.QMainWindow, QObject):
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = UI()
+    app.setStyleSheet(open("styles/dark_orange_theme.qss").read())
     window.show()
     sys.exit(app.exec_())
 

@@ -70,6 +70,7 @@ class MessagesWorker(QObject):
 
 class StreamSenderWorker(QObject):
     finished = pyqtSignal()
+    error_signal=pyqtSignal(str)
 
     def __init__(self, stream_address):
         super(QObject, self).__init__()
@@ -77,9 +78,16 @@ class StreamSenderWorker(QObject):
 
     def run(self):
         #stream_address = "rtmp://localhost:1935/show/test"
+        '''
+        ffmpeg -f v4l2 -i /dev/video0 -f alsa -i hw:0 -vcodec libx264 -b:v 300k -threads 2 -tune zerolatency -fflags low_delay -fflags nobuffer -g 8 -f flv rtmp://127.0.0.1:1935/show/test
+        '''
         stream_cmd=f"ffmpeg -f v4l2 -i /dev/video0 -f alsa -i hw:0 -vcodec libx264 -b:v 300k -threads 2 -tune zerolatency -fflags low_delay -fflags nobuffer -g 8 -f flv {self.stream_address}"
         # view_camera_cmd = "ffplay -i /dev/video0 -fflags nobuffer".rstrip().lstrip().split()
+
         self.proc = subprocess.Popen(f"exec {stream_cmd}", shell=True, stdout=subprocess.PIPE)
+        self.proc.wait()
+        if self.proc.returncode==1:
+            self.error_signal.emit("Server connection refused")
 
     def stop(self):
         self.proc.terminate()
