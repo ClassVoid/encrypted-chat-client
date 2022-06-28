@@ -196,7 +196,7 @@ class UI(QtWidgets.QMainWindow, QObject):
     def __new_chat_pressed(self):
         chat_name, ok = QtWidgets.QInputDialog().getText(self, "Create chat", "Enter chat name")
 
-        if ok and len(chat_name) < 20:
+        if ok and len(chat_name) <= 20:
             print(f"chat name is {chat_name}")
             self.new_chat_btn.setEnabled(False)
             self.new_chat_thread = QThread()
@@ -334,9 +334,9 @@ class UI(QtWidgets.QMainWindow, QObject):
 
     def __stream_pressed(self):
         print("Stream Started")
-        self.stream_on = not self.stream_on
+        #self.stream_on = not self.stream_on
 
-        if self.stream_on:
+        if not self.stream_on:
             x = ni.gateways()
             y = x['default'][2][1]
             ip_address = ni.ifaddresses(y)[ni.AF_INET][0]['addr']
@@ -347,6 +347,7 @@ class UI(QtWidgets.QMainWindow, QObject):
                                      "Insert the RTMP stream server IPv4 address\nBy default is the local address")
             server_address = ""
             if ok:
+                self.stream_on = not self.stream_on
                 if len(input_server_address) == 0 \
                         or re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", input_server_address) is None:
                     server_address = default_server_address
@@ -377,6 +378,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.stream_worker.stop()
             # self.watch_stream_btn.setEnabled(True)
 
+
     def __watch_stream_pressed(self):
         print("Watch stream")
         # text dialog box popup
@@ -397,9 +399,6 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.watch_stream_thread.finished.connect(lambda: self.watch_stream_btn.setEnabled(True))
 
             self.watch_stream_thread.start()
-
-    def __preferences_pressed(self):
-        print("preferences")
 
     def _update_chat(self):
         '''

@@ -5,6 +5,7 @@ class CreateUserDialog(QDialog):
         super().__init__(parent)
 
         self.username=QLineEdit(self)
+        self.username.setMaxLength(20)
         self.password=QLineEdit(self)
         self.password.setEchoMode(QLineEdit.Password)
         self.confirm_password=QLineEdit(self)
