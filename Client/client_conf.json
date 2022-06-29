@@ -1,5 +1,5 @@
 {
   "server_port": 8080,
-  "server_address": "http://127.0.0.1",
+  "server_address": "http://192.168.100.21",
   "server_endpoint": "api"
 }
