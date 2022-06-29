@@ -8,6 +8,7 @@ First execute the
 to launch the app
 ./run.sh
 
+
 On windows
 First download the ffmpeg by following the steps from this tutorial
 https://www.geeksforgeeks.org/how-to-install-ffmpeg-on-windows/

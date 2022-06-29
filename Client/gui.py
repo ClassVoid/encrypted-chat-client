@@ -2,6 +2,7 @@ import re
 import socket
 import sys
 import netifaces as ni
+import platform
 
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QEvent, Qt
@@ -329,7 +330,9 @@ class UI(QtWidgets.QMainWindow, QObject):
         '''
         self.send_btn.setEnabled(True)
         self.add_user_btn.setEnabled(True)
-        self.stream_btn.setEnabled(True)
+        # I can't stream on windows
+        if platform.system()!="Windows":
+            self.stream_btn.setEnabled(True)
         self.chat_selected=True
 
         owner_name = getChatOwner(item.text()).text
