@@ -2,6 +2,7 @@ import requests as requests
 from PyQt5.QtCore import QObject, pyqtSignal
 import subprocess
 import threading
+import platform
 
 from client_utils import *
 
@@ -81,6 +82,8 @@ class StreamSenderWorker(QObject):
         '''
         ffmpeg -f v4l2 -i /dev/video0 -f alsa -i hw:0 -vcodec libx264 -b:v 300k -threads 2 -tune zerolatency -fflags low_delay -fflags nobuffer -g 8 -f flv rtmp://127.0.0.1:1935/show/test
         '''
+        windows_stream_cmd=f"ffmpeg -f dshow -i video='Integrated Webcam':audio='Microphone (Realtek Audio)' -profile:v high -pix_fmt yuvj420p -level:v 4.1 -preset ultrafast -tune zerolatency -vcodec libx264 -r 10 -b:v 512k -s 640x360 -acodec aac -ac 2 -ab 32k -ar 44100 -f mpegts -flush_packets 0 udp://192.168.1.4:5000?pkt_size=1316"
+
         stream_cmd=f"ffmpeg -f v4l2 -i /dev/video0 -f alsa -i hw:0 -vcodec libx264 -b:v 300k -threads 2 -tune zerolatency -fflags low_delay -fflags nobuffer -g 8 -f flv {self.stream_address}"
         # view_camera_cmd = "ffplay -i /dev/video0 -fflags nobuffer".rstrip().lstrip().split()
 
@@ -105,7 +108,11 @@ class StreamConsumerWorker(QObject):
         #stream_address = "rtmp://127.0.0.1/show/test"
         cmd = f"ffplay -fflags nobuffer {self.stream_address}"#.rstrip().lstrip().split()
 
-        self.proc=subprocess.Popen(f"exec {cmd}", shell=True, stdout=subprocess.PIPE)
+        if platform.system()=="Windows":
+            self.proc=subprocess.Popen(f"{cmd}", shell=True, stdout=subprocess.PIPE)
+        else:
+            self.proc=subprocess.Popen(f"exec {cmd}", shell=True, stdout=subprocess.PIPE)
+
         print(threading.current_thread().name)
         self.proc.wait()
         self.finished.emit()
