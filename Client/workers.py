@@ -113,7 +113,7 @@ class StreamConsumerWorker(QObject):
         else:
             self.proc=subprocess.Popen(f"exec {cmd}", shell=True, stdout=subprocess.PIPE)
 
-        print(threading.current_thread().name)
+        
         self.proc.wait()
         self.finished.emit()
 
