@@ -111,9 +111,9 @@ def getChatOwner(chatName: str) -> requests.Response.__class__:
     return res
 
 
-def getChatKey(username: str, chatName: str) -> str:
+def getChatKey(username: str, chatName: str) -> requests.Response.__class__:
     res = requests.get(f"{server_url}/chat-keys/{chatName}/{username}")
-    return res.text
+    return res
 
 
 def getTicket(username: str) -> requests.Response.__class__:
@@ -242,7 +242,7 @@ def addUser(credentials: Dict[str, str], username: str, chatName: str) -> reques
         chatPasswordEncr = encryptRSA(chatPassword, credentials["pubKey"])
     else:
         chatKeyEncr = getChatKey(credentials['username'], chatName)
-        chatKey = decryptRSA(chatKeyEncr, credentials['PriKey'])
+        chatKey = decryptRSA(chatKeyEncr.text, credentials['PriKey'])
         user_credentials = getUserData(username)
         print(f"user credentials {user_credentials.status_code}")
         if user_credentials.status_code == 404:

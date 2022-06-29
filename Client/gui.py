@@ -26,13 +26,14 @@ class UI(QtWidgets.QMainWindow, QObject):
                         ("red", Qt.red),
         '''
 
-        self.color_map=[("gold", QColor(255, 215, 0)), ("orangered", QColor(255, 69, 0)),
-                        ("firebrick", QColor(178, 34, 34)), ("lawngreen", QColor(124, 252, 0))
-                        ]
+        self.color_map = [("gold", QColor(255, 215, 0)), ("orangered", QColor(255, 69, 0)),
+                          ("firebrick", QColor(178, 34, 34)), ("lawngreen", QColor(124, 252, 0))
+                          ]
         # asocierea dintre user din chat si o culoare din paleta de culori
-        self.user_color={}
+        self.user_color = {}
         self.can_get_msg = True
         self.stream_on = False
+        self.chat_selected=False
 
         self.show()
 
@@ -67,11 +68,11 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_users_list = self.page_2.findChild(QtWidgets.QListWidget, "listWidget_2")
         self.delete_account_btn = self.page_2.findChild(QtWidgets.QPushButton, "pushButton_11")
 
-        #self.preferences_act = QtWidgets.QAction("Preferences", self)
-        #self.findChild(QtWidgets.QMenuBar, "menubar") \
+        # self.preferences_act = QtWidgets.QAction("Preferences", self)
+        # self.findChild(QtWidgets.QMenuBar, "menubar") \
         #    .findChild(QtWidgets.QMenu, "menuSettings") \
         #    .addAction(self.preferences_act)
-        #print(f"Preferances= {self.preferences_act}")
+        # print(f"Preferances= {self.preferences_act}")
         # self.chat_list.addItem("chat_1")
         # self.chat_list.addItem("chat_2")
         # self.chat_list.clear()
@@ -96,7 +97,7 @@ class UI(QtWidgets.QMainWindow, QObject):
 
         # text input size config
         self.username_txt.setMaxLength(20)
-        #self.password_txt.setMaxLength(50)
+        # self.password_txt.setMaxLength(50)
 
     def __login_pressed(self):
         username = self.username_txt.text()
@@ -159,16 +160,16 @@ class UI(QtWidgets.QMainWindow, QObject):
                 QtWidgets.QMessageBox.critical(self, "Login Error", "Incorrect password")
 
     def __create_user_pressed(self):
-        #username = self.username_txt.text()
-        #password = self.password_txt.text()
-        create_dialog=CreateUserDialog(self)
+        # username = self.username_txt.text()
+        # password = self.password_txt.text()
+        create_dialog = CreateUserDialog(self)
         if create_dialog.exec():
-            username, password, confirm_password=create_dialog.getResult()
-            if password!=confirm_password:
+            username, password, confirm_password = create_dialog.getResult()
+            if password != confirm_password:
                 QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Passwords don't match")
                 return
 
-            if len(password)<4:
+            if len(password) < 4:
                 QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Password must exceed 4 characters")
                 return
 
@@ -191,8 +192,6 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.signup_thread.start()
             self.signup_thread.finished.connect(lambda: self.create_user_btn.setEnabled(True))
             self.signup_thread.finished.connect(lambda: self.login_btn.setEnabled(True))
-
-
 
     def __signup_callback(self, res: requests.Response.__class__):
         '''
@@ -254,6 +253,9 @@ class UI(QtWidgets.QMainWindow, QObject):
             send the message
             updateChat()
         '''
+        if not self.chat_selected:
+            return
+
         message = self.message_box.toPlainText()
         if len(message) < 500:
             sendMessage(self.credentials['username'], self.current_chat.text(), self.chat_key, message)
@@ -280,6 +282,7 @@ class UI(QtWidgets.QMainWindow, QObject):
     def __logout_pressed(self):
         # you could clear the text boxes
         self.current_chat.setText("No Chat Selected")
+        self.chat_selected=False
         self.message_box.setText("")
         self.chat_browser.setText("")
         self._close_stream()
@@ -298,6 +301,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_browser.setText("")
         self.current_chat.setText("No Chat Selected")
         self.chat_users_list.clear()
+        self.chat_selected=False
         self.send_btn.setEnabled(False)
         self.delete_chat_btn.setEnabled(False)
         self.add_user_btn.setEnabled(False)
@@ -326,6 +330,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.send_btn.setEnabled(True)
         self.add_user_btn.setEnabled(True)
         self.stream_btn.setEnabled(True)
+        self.chat_selected=True
 
         owner_name = getChatOwner(item.text()).text
         if owner_name == self.credentials['username']:
@@ -336,7 +341,20 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_list.setEnabled(False)
 
         # get the chat key
-        encrypted_key = getChatKey(self.credentials['username'], item.text())
+        resp = getChatKey(self.credentials['username'], item.text())
+        if resp.status_code != 200:
+            QtWidgets.QMessageBox.critical(self, "ERROR", resp.text)
+            self.chat_browser.setText("")
+            self.current_chat.setText("No Chat Selected")
+            self.chat_selected=False
+            self.chat_users_list.clear()
+            self.send_btn.setEnabled(False)
+            self.delete_chat_btn.setEnabled(False)
+            self.add_user_btn.setEnabled(False)
+            self._refresh_chats()
+            return
+
+        encrypted_key = resp.text
         self.chat_key = decryptRSA(encrypted_key, self.credentials['PriKey'])
 
         self._update_user_list()
@@ -348,7 +366,7 @@ class UI(QtWidgets.QMainWindow, QObject):
 
     def __stream_pressed(self):
 
-        #self.stream_on = not self.stream_on
+        # self.stream_on = not self.stream_on
 
         # check to see if the stream is off
         if not self.stream_on:
@@ -364,7 +382,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             # if the user wants to stream
             if ok:
                 print("Stream Started")
-                self.stream_on = True#not self.stream_on
+                self.stream_on = True  # not self.stream_on
                 if len(input_server_address) == 0 \
                         or re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", input_server_address) is None:
                     server_address = default_server_address
@@ -395,12 +413,12 @@ class UI(QtWidgets.QMainWindow, QObject):
             print("Stream Stopped")
             self.stream_btn.setText("Start Stream")
             self.stream_worker.stop()
-            self.stream_on=False
+            self.stream_on = False
             # self.watch_stream_btn.setEnabled(True)
 
     def __on_stream_error(self, err_msg):
         self.stream_worker.stop()
-        self.stream_on=False
+        self.stream_on = False
         self.stream_btn.setText("Start Stream")
         QtWidgets.QMessageBox.critical(self, "ERROR", err_msg)
 
@@ -433,7 +451,8 @@ class UI(QtWidgets.QMainWindow, QObject):
                 display the messages
         :return:
         '''
-
+        if not self.chat_selected:
+            return
 
         chat_name = self.current_chat.text()
         print(f"updating chat {chat_name}")
@@ -443,20 +462,22 @@ class UI(QtWidgets.QMainWindow, QObject):
         x = datetime.datetime.now() - datetime.timedelta(days=1)
         date_time = x.strftime("%Y-%m-%dT%H:%M:%S")
         messages = getMessages(chat_name, date_time).json()
+        print(messages)
 
-        #chat_text = ""
-        msg_elem=""
+        # chat_text = ""
+        msg_elem = ""
         # decrypt messages
         for i in range(len(messages)):
-            msg_date=datetime.datetime.fromisoformat(messages[i]['date'])
+            msg_date = datetime.datetime.fromisoformat(messages[i]['date'])
             chat_text = f"{messages[i]['author']}" \
-                         f"[{msg_date.hour}:{msg_date.minute} {msg_date.day}/{msg_date.month}/{msg_date.year}]:" \
-                         f" {decryptAES(messages[i]['encryptedMsg'], self.chat_key)}\n"
+                        f"[{msg_date.hour}:{msg_date.minute} {msg_date.day}/{msg_date.month}/{msg_date.year}]:" \
+                        f" {decryptAES(messages[i]['encryptedMsg'], self.chat_key)}"
 
-            if messages[i]['author']==self.credentials['username']:
+            if messages[i]['author'] == self.credentials['username']:
                 msg_elem += f"<div style=\"color:darkorange\">{chat_text}</div>"
             else:
-                msg_elem+= f"<div style=\"color:{self.user_color[messages[i]['author']][0]}\">{chat_text}</div>"
+                msg_elem += f"<div style=\"color:{self.user_color[messages[i]['author']][0]}\">{chat_text}</div>"
+        print(msg_elem)
         self.chat_browser.setText(msg_elem)
 
     def _update_user_list(self):
@@ -468,13 +489,14 @@ class UI(QtWidgets.QMainWindow, QObject):
             user_list = updateUserList(self.credentials, chat_name).json()
             self.chat_users_list.clear()
             for username in user_list:
-                item=QtWidgets.QListWidgetItem(username)
+                item = QtWidgets.QListWidgetItem(username)
                 # verific daca eu sunt userul, daca da colorez cu albastru
-                if username==self.credentials['username']:
+                if username == self.credentials['username']:
                     item.setForeground(QColor(255, 140, 0))
                 else:
-                    color=self.color_map[user_list.index(username)%len(self.color_map)] #random.choice(self.color_map)
-                    self.user_color[username]= color
+                    color = self.color_map[
+                        user_list.index(username) % len(self.color_map)]  # random.choice(self.color_map)
+                    self.user_color[username] = color
                     item.setForeground(color[1])
                 self.chat_users_list.addItem(item)
         except:
