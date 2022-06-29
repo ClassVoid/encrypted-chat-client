@@ -35,6 +35,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.can_get_msg = True
         self.stream_on = False
         self.chat_selected=False
+        self.watching_stream=False
 
         self.show()
 
@@ -95,6 +96,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_users_list.itemClicked.connect(self.__select_user_pressed)
         self.delete_account_btn.clicked.connect(self.__delete_account_pressed)
         self.message_box.installEventFilter(self)
+        self.central_widget.installEventFilter(self)
 
         # text input size config
         self.username_txt.setMaxLength(20)
@@ -355,6 +357,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.delete_chat_btn.setEnabled(False)
             self.add_user_btn.setEnabled(False)
             self._refresh_chats()
+            self.chat_list.setEnabled(True)
             return
 
         encrypted_key = resp.text
@@ -426,25 +429,33 @@ class UI(QtWidgets.QMainWindow, QObject):
         QtWidgets.QMessageBox.critical(self, "ERROR", err_msg)
 
     def __watch_stream_pressed(self):
-        print("Watch stream")
+        #print("Watch stream")
         # text dialog box popup
         # !!! CHECK IF THE INPUT IS AN ADDRESS
-        stream_address, ok = QtWidgets.QInputDialog.getText(self, "Connect to Stream",
-                                                            "Insert the RTMP stream server IPv4 address")
 
-        if ok and re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", stream_address) is not None:
-            self.watch_stream_btn.setEnabled(False)
-            self.watch_stream_thread = QThread()
-            self.watch_stream_worker = StreamConsumerWorker(stream_address)
-            self.watch_stream_worker.moveToThread(self.watch_stream_thread)
+        if not self.watching_stream:
+            stream_address, ok = QtWidgets.QInputDialog.getText(self, "Connect to Stream",
+                                                                "Insert the RTMP stream server IPv4 address")
 
-            self.watch_stream_thread.started.connect(self.watch_stream_worker.run)
-            self.watch_stream_worker.finished.connect(self.watch_stream_thread.quit)
-            self.watch_stream_worker.finished.connect(self.watch_stream_worker.deleteLater)
-            self.watch_stream_thread.finished.connect(self.watch_stream_thread.deleteLater)
-            self.watch_stream_thread.finished.connect(lambda: self.watch_stream_btn.setEnabled(True))
+            if ok and re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", stream_address) is not None:
+                self.watching_stream = True
+                self.watch_stream_btn.setText("Stop Watching")
+                #self.watch_stream_btn.setEnabled(False)
+                self.watch_stream_thread = QThread()
+                self.watch_stream_worker = StreamConsumerWorker(stream_address)
+                self.watch_stream_worker.moveToThread(self.watch_stream_thread)
 
-            self.watch_stream_thread.start()
+                self.watch_stream_thread.started.connect(self.watch_stream_worker.run)
+                self.watch_stream_worker.finished.connect(self.watch_stream_thread.quit)
+                self.watch_stream_worker.finished.connect(self.watch_stream_worker.deleteLater)
+                self.watch_stream_thread.finished.connect(self.watch_stream_thread.deleteLater)
+                #self.watch_stream_thread.finished.connect(lambda: self.watch_stream_btn.setEnabled(True))
+
+                self.watch_stream_thread.start()
+        else:
+            self.watching_stream=False
+            self.watch_stream_btn.setText("Watch Stream")
+            self.watch_stream_worker.stop()
 
     def _update_chat(self):
         '''
@@ -534,6 +545,10 @@ class UI(QtWidgets.QMainWindow, QObject):
                 and event.key() == Qt.Key_Return:
             self.__send_pressed()
             return True
+
+        if event.type()==QEvent.Type.KeyPress and event.key()==Qt.Key_F5:
+            self._refresh_chats()
+            self._update_chat()
 
         return super(UI, self).eventFilter(obj, event)
 
