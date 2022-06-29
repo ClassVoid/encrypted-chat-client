@@ -119,5 +119,7 @@ class StreamConsumerWorker(QObject):
 
 
     def stop(self):
-        self.proc.terminate()
-        #self.finished.emit()
+        if platform.system()!="Windows":
+            self.proc.terminate()
+        else:
+            subprocess.Popen(f"taskkill /F /T /PID {self.proc.pid}")
