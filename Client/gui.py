@@ -34,8 +34,8 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.user_color = {}
         self.can_get_msg = True
         self.stream_on = False
-        self.chat_selected=False
-        self.watching_stream=False
+        self.chat_selected = False
+        self.watching_stream = False
 
         self.show()
 
@@ -70,14 +70,6 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_users_list = self.page_2.findChild(QtWidgets.QListWidget, "listWidget_2")
         self.delete_account_btn = self.page_2.findChild(QtWidgets.QPushButton, "pushButton_11")
 
-        # self.preferences_act = QtWidgets.QAction("Preferences", self)
-        # self.findChild(QtWidgets.QMenuBar, "menubar") \
-        #    .findChild(QtWidgets.QMenu, "menuSettings") \
-        #    .addAction(self.preferences_act)
-        # print(f"Preferances= {self.preferences_act}")
-        # self.chat_list.addItem("chat_1")
-        # self.chat_list.addItem("chat_2")
-        # self.chat_list.clear()
 
     def __configure_signals(self):
         # Login page
@@ -100,7 +92,7 @@ class UI(QtWidgets.QMainWindow, QObject):
 
         # text input size config
         self.username_txt.setMaxLength(20)
-        # self.password_txt.setMaxLength(50)
+        self.password_txt.setMaxLength(50)
 
     def __login_pressed(self):
         username = self.username_txt.text()
@@ -163,8 +155,7 @@ class UI(QtWidgets.QMainWindow, QObject):
                 QtWidgets.QMessageBox.critical(self, "Login Error", "Incorrect password")
 
     def __create_user_pressed(self):
-        # username = self.username_txt.text()
-        # password = self.password_txt.text()
+
         create_dialog = CreateUserDialog(self)
         if create_dialog.exec():
             username, password, confirm_password = create_dialog.getResult()
@@ -176,7 +167,16 @@ class UI(QtWidgets.QMainWindow, QObject):
                 QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Password must exceed 4 characters")
                 return
 
-            print(f"Create Account\nUsername: {username}\nPassword: {password}")
+            if re.search("^\w+$", username) is None:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR",
+                                               "Username must contain alphanumeric characters or underscores")
+                return
+
+            if len(username) < 4:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Username must be at least 4 characters long")
+                return
+
+            # print(f"Create Account\nUsername: {username}\nPassword: {password}")
             '''
                 Create the credentials and send them to the server
                 Check for errors
@@ -212,8 +212,18 @@ class UI(QtWidgets.QMainWindow, QObject):
     def __new_chat_pressed(self):
         chat_name, ok = QtWidgets.QInputDialog().getText(self, "Create chat", "Enter chat name")
 
-        if ok and len(chat_name) <= 20:
-            print(f"chat name is {chat_name}")
+        if ok:
+            if len(chat_name) < 4:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Chat name must be at least 4 characters long")
+                return
+            if len(chat_name) > 20:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR", "Chat name must not exceed 20 characters")
+                return
+            if re.search("^\w+$", chat_name) is None:
+                QtWidgets.QMessageBox.critical(self, "INPUT ERROR",
+                                               "Chat name must contain alphanumeric characters or underscores")
+                return
+
             self.new_chat_btn.setEnabled(False)
             self.new_chat_thread = QThread()
             self.new_chat_worker = NewChatWorker(self.credentials, chat_name)
@@ -228,8 +238,6 @@ class UI(QtWidgets.QMainWindow, QObject):
 
             self.new_chat_thread.start()
             self.new_chat_thread.finished.connect(lambda: self.new_chat_btn.setEnabled(True))
-        elif ok:
-            QtWidgets.QMessageBox.critical(self, "ERROR", "Chat name is too long\nMaximum length is 20 characters")
 
     def __new_chat_callback(self, res: requests.Response, chat_name: str):
         if res.status_code == 201:
@@ -285,7 +293,7 @@ class UI(QtWidgets.QMainWindow, QObject):
     def __logout_pressed(self):
         # you could clear the text boxes
         self.current_chat.setText("No Chat Selected")
-        self.chat_selected=False
+        self.chat_selected = False
         self.message_box.setText("")
         self.chat_browser.setText("")
         self._close_stream()
@@ -304,7 +312,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.chat_browser.setText("")
         self.current_chat.setText("No Chat Selected")
         self.chat_users_list.clear()
-        self.chat_selected=False
+        self.chat_selected = False
         self.send_btn.setEnabled(False)
         self.delete_chat_btn.setEnabled(False)
         self.add_user_btn.setEnabled(False)
@@ -333,9 +341,9 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.send_btn.setEnabled(True)
         self.add_user_btn.setEnabled(True)
         # I can't stream on windows
-        if platform.system()!="Windows":
+        if platform.system() != "Windows":
             self.stream_btn.setEnabled(True)
-        self.chat_selected=True
+        self.chat_selected = True
 
         owner_name = getChatOwner(item.text()).text
         if owner_name == self.credentials['username']:
@@ -351,7 +359,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             QtWidgets.QMessageBox.critical(self, "ERROR", resp.text)
             self.chat_browser.setText("")
             self.current_chat.setText("No Chat Selected")
-            self.chat_selected=False
+            self.chat_selected = False
             self.chat_users_list.clear()
             self.send_btn.setEnabled(False)
             self.delete_chat_btn.setEnabled(False)
@@ -404,6 +412,7 @@ class UI(QtWidgets.QMainWindow, QObject):
 
                 # self.watch_stream_btn.setEnabled(False)
                 self.stream_btn.setText("Stop Stream")
+                self.stream_btn.setStyleSheet("background-color : orangered")
                 self.stream_thread = QThread()
                 self.stream_worker = StreamSenderWorker(server_address)
                 self.stream_worker.moveToThread(self.stream_thread)
@@ -418,6 +427,8 @@ class UI(QtWidgets.QMainWindow, QObject):
         else:
             print("Stream Stopped")
             self.stream_btn.setText("Start Stream")
+            self.stream_btn.setStyleSheet(
+                "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
             self.stream_worker.stop()
             self.stream_on = False
             # self.watch_stream_btn.setEnabled(True)
@@ -426,12 +437,11 @@ class UI(QtWidgets.QMainWindow, QObject):
         self.stream_worker.stop()
         self.stream_on = False
         self.stream_btn.setText("Start Stream")
+        self.stream_btn.setStyleSheet("background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
         QtWidgets.QMessageBox.critical(self, "ERROR", err_msg)
 
     def __watch_stream_pressed(self):
-        #print("Watch stream")
         # text dialog box popup
-        # !!! CHECK IF THE INPUT IS AN ADDRESS
 
         if not self.watching_stream:
             stream_address, ok = QtWidgets.QInputDialog.getText(self, "Connect to Stream",
@@ -440,7 +450,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             if ok and re.search("^rtmp://\d+\.\d+\.\d+\.\d+:\d+/\w+/\w+$", stream_address) is not None:
                 self.watching_stream = True
                 self.watch_stream_btn.setText("Stop Watching")
-                #self.watch_stream_btn.setEnabled(False)
+                # self.watch_stream_btn.setEnabled(False)
                 self.watch_stream_thread = QThread()
                 self.watch_stream_worker = StreamConsumerWorker(stream_address)
                 self.watch_stream_worker.moveToThread(self.watch_stream_thread)
@@ -449,11 +459,11 @@ class UI(QtWidgets.QMainWindow, QObject):
                 self.watch_stream_worker.finished.connect(self.watch_stream_thread.quit)
                 self.watch_stream_worker.finished.connect(self.watch_stream_worker.deleteLater)
                 self.watch_stream_thread.finished.connect(self.watch_stream_thread.deleteLater)
-                #self.watch_stream_thread.finished.connect(lambda: self.watch_stream_btn.setEnabled(True))
+                self.watch_stream_worker.finished.connect(lambda: self.watch_stream_btn.setText("Watch Stream"))
 
                 self.watch_stream_thread.start()
         else:
-            self.watching_stream=False
+            self.watching_stream = False
             self.watch_stream_btn.setText("Watch Stream")
             self.watch_stream_worker.stop()
 
@@ -478,7 +488,7 @@ class UI(QtWidgets.QMainWindow, QObject):
         messages = getMessages(chat_name, date_time).json()
         print(messages)
 
-        # chat_text = ""
+
         msg_elem = ""
         # decrypt messages
         for i in range(len(messages)):
@@ -491,7 +501,7 @@ class UI(QtWidgets.QMainWindow, QObject):
                 msg_elem += f"<div style=\"color:darkorange\">{chat_text}</div>"
             else:
                 msg_elem += f"<div style=\"color:{self.user_color[messages[i]['author']][0]}\">{chat_text}</div>"
-        print(msg_elem)
+
         self.chat_browser.setText(msg_elem)
 
     def _update_user_list(self):
@@ -504,7 +514,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.chat_users_list.clear()
             for username in user_list:
                 item = QtWidgets.QListWidgetItem(username)
-                # verific daca eu sunt userul, daca da colorez cu albastru
+                # verific daca eu sunt userul, daca da colorez cu aceiasi culoare
                 if username == self.credentials['username']:
                     item.setForeground(QColor(255, 140, 0))
                 else:
@@ -523,6 +533,8 @@ class UI(QtWidgets.QMainWindow, QObject):
         if hasattr(self, 'stream_worker') and self.stream_on:
             self.stream_worker.stop()
             self.stream_btn.setText("Start Stream")
+            self.stream_btn.setStyleSheet(
+                "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
             self.stream_on = False
 
         if hasattr(self, 'watch_stream_worker'):
@@ -546,7 +558,7 @@ class UI(QtWidgets.QMainWindow, QObject):
             self.__send_pressed()
             return True
 
-        if event.type()==QEvent.Type.KeyPress and event.key()==Qt.Key_F5:
+        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key_F5:
             self._refresh_chats()
             self._update_chat()
 
